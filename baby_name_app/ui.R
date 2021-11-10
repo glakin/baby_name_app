@@ -1,6 +1,7 @@
 
 library(shiny)
 library(bslib)
+library(shinyalert)
 
 # shinyUI(fluidPage(
 # 
@@ -27,7 +28,9 @@ library(bslib)
 
 shinyUI(fluidPage(
     
-    theme = bs_theme(version = 4, bootswatch = "sketchy"),
+    #useShinyalert(),
+    
+    theme = bs_theme(version = 4, bootswatch = "minty"),
     
     titlePanel(
         h1("Baby Name Helper", align = "center")
@@ -52,12 +55,14 @@ shinyUI(fluidPage(
     ),
     
     fluidRow(
-        column(6, align = "center",
+        column(4),
+        column(2, align = "center",
             actionButton("suggest", "Suggest a Name!")
             ),
-        column(6, align = "center",
+        column(2, align = "center",
             actionButton("save", "Save this Name!")
-        )
+        ),
+        column(4)
     ),
     
     br(),
@@ -65,10 +70,27 @@ shinyUI(fluidPage(
     verticalLayout(
         h1(textOutput("nameSuggestion"), align = "center"),
         h6(textOutput("nameRank"), align = "center"),
-        br(),
         h6(htmlOutput("observedNames"), align = "center")
+        
+        
         #h6(textOutput("observedPct"), align = "center")
-    )
+    ),
+    
+    fluidRow(
+        column(4, offset = 4, align = "center", h4(textOutput("likedHeader"))),
+    ),
+    
+    fluidRow(
+        column(8, offset = 2, textOutput("liked")),
+
+    ),
+    
+    # br(), 
+    # 
+    # fluidRow(
+    #     column(4, offset=4, align = "center",
+    #            actionButton("email", "Email Me My Saved Names!"))
+    # )
 
     
 ))
