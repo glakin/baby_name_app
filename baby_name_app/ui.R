@@ -28,7 +28,7 @@ library(shinyalert)
 
 shinyUI(fluidPage(
     
-    #useShinyalert(),
+    useShinyalert(),
     
     theme = bs_theme(version = 4, bootswatch = "minty"),
     
@@ -84,6 +84,10 @@ shinyUI(fluidPage(
         column(8, offset = 2, textOutput("liked")),
 
     ),
+    
+    hr(),
+    
+    h6("Made by Jerry Lakin, GerardLakin@gmail.com", align = "right")
     
     # br(), 
     # 

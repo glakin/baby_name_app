@@ -1,16 +1,32 @@
 
 library(shiny)
 library(shinyalert)
+library(mongolite)
+library(dplyr)
 
 # Read the name data
 df <- read.csv("name_data.csv")
 
+connection_string <- 
+    paste0("mongodb+srv://glakin0:",
+           keyring::key_get(service = "mongodb", username = "glakin0"), 
+           "@firstcluster.wqhqh.mongodb.net/baby_name_helper?retryWrites=true&w=majority")
+
+likCon <- mongo(#database = "baby_name_helper",
+             collection = "liked_names",
+             url = connection_string)
+
+
+obsCon <- mongo(#database = "baby_name_helper",
+    collection = "observed_names",
+    url = connection_string)
+
 # Create empty "observed" and "liked" dataframes that will contain observed
 # and liked names
-observed = data.frame(matrix(ncol = 4, nrow = 0))
-colnames(observed) <- c("name", "gender", "count", "rank")
-liked = data.frame(matrix(ncol = 4, nrow = 0))
-colnames(liked) <- c("name", "gender", "count", "rank")
+observed = data.frame(matrix(ncol = 5, nrow = 0))
+colnames(observed) <- c("email", "name", "gender", "count", "rank")
+liked = data.frame(matrix(ncol = 5, nrow = 0))
+colnames(liked) <- c("email", "name", "gender", "count", "rank")
 
 genders <- data.frame(gender = c("F", "M"),
                       gender_long = c("Girl", "Boy")
@@ -37,7 +53,7 @@ shinyServer(function(input, output) {
         type = "input",
         inputType = "text",
         inputValue = "",
-        inputPlaceholder = "Email Adress",
+        inputPlaceholder = "Email Address",
         showConfirmButton = TRUE,
         showCancelButton = FALSE,
         confirmButtonText = "OK",
@@ -49,6 +65,24 @@ shinyServer(function(input, output) {
     
     # Event: Clicking the "Suggest a Name" button
     observeEvent(input$suggest, {
+        
+        if(length(obs$observed$name) == 0) {
+            db_obs <- obsCon$find(paste0('{"email":"',input$shinyalert,'"}'))
+            if (length(db_obs$name > 0)) {
+                obs$observed <- db_obs
+            }
+        }
+        
+        if(length(lik$liked$name) == 0) {
+            db_lik <- likCon$find(paste0('{"email":"',input$shinyalert,'"}'))
+            if (length(db_lik$name > 0)) {
+                lik$liked <- db_lik
+                output$likedHeader <- 
+                    renderText({paste0("Your Saved ",genders[genders$gender == input$gender,]$gender_long ," Names")})
+                output$liked <- 
+                    renderText({paste(unlist(lik$liked[lik$liked[, "gender"] == input$gender, "name"]), collapse = ", ")})
+            }
+        }
         
         # if (input$rpt == "yes" | !file.exists(paste0("observed_names_",input$gender,".csv"))) {
         #     df_gender <- df[df$gender == input$gender,]
@@ -69,13 +103,16 @@ shinyServer(function(input, output) {
         values$nameRank <- round(df_gender[df_gender$name == values$nameSuggestion,]$rank)
         values$nameCount <- df_gender[df_gender$name == values$nameSuggestion,]$count
         
+        email <- coalesce(input$shinyalert, "Unknown")
         # Check if name is already in observed DF, if not add it
         # Note the if logic is a bit hacky but it's written this way to account
         # for the fact that the same name may appear for both boys and girls
         if(!(input$gender %in% obs$observed[obs$observed[,"name"] == values$nameSuggestion,"gender"])) {
-            new_nm <- data.frame(values$nameSuggestion, input$gender, values$nameCount, values$nameRank)
-            colnames(new_nm) <- c("name", "gender", "count", "rank")
+            new_nm <- data.frame(email, values$nameSuggestion, input$gender, values$nameCount, values$nameRank)
+            colnames(new_nm) <- c("email", "name", "gender", "count", "rank")
             obs$observed <- rbind(obs$observed, new_nm)
+            #Update the database
+            obsCon$insert(new_nm)
         }
         
         output$test <- renderText({paste(unlist(obs$observed[,"name"]))})
@@ -98,7 +135,7 @@ shinyServer(function(input, output) {
                        length(obs$observed[obs$observed[,"gender"] == "F","name"]),
                        "</b> names, representing <b>",
                        round(sum(obs$observed[obs$observed[,"gender"] == "F","count"])/sum(df[df$gender == input$gender,]$count),digits=2)*100, 
-                       "%</b> of female babies born in 2020")
+                       "%</b> of girls born in 2020")
             })
             
         } else {
@@ -110,9 +147,12 @@ shinyServer(function(input, output) {
                        length(obs$observed[obs$observed[,"gender"] == "M","name"]),
                        "</b> names, representing <b>",
                        round(sum(obs$observed[obs$observed[,"gender"] == "M","count"])/sum(df[df$gender == input$gender,]$count),digits=2)*100, 
-                       "%</b> of male babies born in 2020")
+                       "%</b> of boys born in 2020")
             })
         }
+        
+        
+        
         
         # Old version of handling observed names using .csv files - changed to
         # reactive dataframes
@@ -187,11 +227,15 @@ shinyServer(function(input, output) {
         #     write.csv(new_name, paste0("liked_names_",input$gender,".csv"), row.names = FALSE)
         # }
         
+        email <- coalesce(input$shinyalert, "Unknown")
         
         if(!(input$gender %in% lik$liked[lik$liked[,"name"] == values$nameSuggestion,"gender"])) {
-            new_nm <- data.frame(values$nameSuggestion, input$gender, values$nameCount, values$nameRank)
-            colnames(new_nm) <- c("name", "gender", "count", "rank")
+            new_nm <- data.frame(email, values$nameSuggestion, input$gender, values$nameCount, values$nameRank)
+            colnames(new_nm) <- c("email", "name", "gender", "count", "rank")
             lik$liked <- rbind(lik$liked, new_nm)
+            #Update the database
+            likCon$insert(new_nm)
+            
         }
         
         # if(input$gender == "F") {
