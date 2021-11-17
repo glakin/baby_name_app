@@ -46,7 +46,7 @@ shinyUI(fluidPage(
                              choices = list("Female" = "F",
                                             "Male" = "M"))
                ),
-        column(3, h4("Repeat names?", align = "right")),
+        column(3, h4("Repeat Names?", align = "right")),
         column(3,
                radioButtons("rpt", "",
                             choices = list("Yes" = "yes",
@@ -77,12 +77,17 @@ shinyUI(fluidPage(
     ),
     
     fluidRow(
-        column(4, offset = 4, align = "center", h4(textOutput("likedHeader"))),
+        column(4, offset = 4, align = "center", h4(textOutput("likedHeader")))
     ),
     
     fluidRow(
-        column(8, offset = 2, textOutput("liked")),
+        column(8, offset = 2, textOutput("liked"))
 
+    ),
+    
+    fluidRow(
+        column(4, offset = 4, align = "center",
+               actionButton("email", "Email Me My Saved Names"))
     ),
     
     hr(),

@@ -3,13 +3,16 @@ library(shiny)
 library(shinyalert)
 library(mongolite)
 library(dplyr)
+library(emayili)
 
 # Read the name data
 df <- read.csv("name_data.csv")
 
+readRenviron(".Renviron")
+
 connection_string <- 
     paste0("mongodb+srv://glakin0:",
-           keyring::key_get(service = "mongodb", username = "glakin0"), 
+           Sys.getenv("mongo_pw"),
            "@firstcluster.wqhqh.mongodb.net/baby_name_helper?retryWrites=true&w=majority")
 
 likCon <- mongo(#database = "baby_name_helper",
@@ -66,7 +69,7 @@ shinyServer(function(input, output) {
     # Event: Clicking the "Suggest a Name" button
     observeEvent(input$suggest, {
         
-        if(length(obs$observed$name) == 0) {
+        if (length(obs$observed$name) == 0) {
             db_obs <- obsCon$find(paste0('{"email":"',input$shinyalert,'"}'))
             if (length(db_obs$name > 0)) {
                 obs$observed <- db_obs
@@ -92,7 +95,7 @@ shinyServer(function(input, output) {
         # }
         
         # Check if the repeat names option is toggled and limit the data accordingly
-        if(input$rpt == "yes") {
+        if (input$rpt == "yes") {
             df_gender <- df[df$gender == input$gender,]
         } else {
             df_gender <- df[df$gender == input$gender & !(df$name %in% obs$observed[, "name"]),]
@@ -107,7 +110,7 @@ shinyServer(function(input, output) {
         # Check if name is already in observed DF, if not add it
         # Note the if logic is a bit hacky but it's written this way to account
         # for the fact that the same name may appear for both boys and girls
-        if(!(input$gender %in% obs$observed[obs$observed[,"name"] == values$nameSuggestion,"gender"])) {
+        if (!(input$gender %in% obs$observed[obs$observed[,"name"] == values$nameSuggestion,"gender"])) {
             new_nm <- data.frame(email, values$nameSuggestion, input$gender, values$nameCount, values$nameRank)
             colnames(new_nm) <- c("email", "name", "gender", "count", "rank")
             obs$observed <- rbind(obs$observed, new_nm)
@@ -229,7 +232,7 @@ shinyServer(function(input, output) {
         
         email <- coalesce(input$shinyalert, "Unknown")
         
-        if(!(input$gender %in% lik$liked[lik$liked[,"name"] == values$nameSuggestion,"gender"])) {
+        if (!(input$gender %in% lik$liked[lik$liked[,"name"] == values$nameSuggestion,"gender"])) {
             new_nm <- data.frame(email, values$nameSuggestion, input$gender, values$nameCount, values$nameRank)
             colnames(new_nm) <- c("email", "name", "gender", "count", "rank")
             lik$liked <- rbind(lik$liked, new_nm)
@@ -254,8 +257,43 @@ shinyServer(function(input, output) {
     })
     
     observeEvent(input$email, {
-        email <- input$shinyalert
-        output$email <- renderText({email})
+        recipient <- input$shinyalert
+        
+        if (grepl("@", recipient, fixed = TRUE) & 
+            (grepl(".com", recipient, fixed = TRUE) | 
+             grepl(".edu", recipient, fixed = TRUE) |
+             grepl(".org", recipient, fixed = TRUE) |
+             grepl(".gov", recipient, fixed = TRUE))) {
+        
+            mail_pw <- Sys.getenv("mail_pw")
+            
+            liked_f_names <- lik$liked[lik$liked$gender == 'F',]$name
+            liked_m_names <- lik$liked[lik$liked$gender == 'M',]$name
+            
+            f_names_txt <- paste(liked_f_names, collapse = ", ")
+            m_names_txt <- paste(liked_m_names, collapse = ", ")
+            
+            if (length(liked_f_names) > 0 & length(liked_m_names > 0)) {
+                mail_txt <- paste0("Girl names: ", f_names_txt, "\n Boy names: ", m_names_txt)
+            } else if(length(liked_f_names) > 0 & length(liked_m_names) == 0) {
+                mail_txt <- paste0("Girl names: ", f_names_txt)
+            } else if(length(liked_f_names) == 0 & length(liked_m_names) > 0) {
+                mail_txt <- paste0("Boy names: ", m_names_txt)
+            }
+            
+            email <- envelope(to = recipient,
+                              from = "babynamehelper@gmail.com",
+                              subject = "Your Saved Names from Baby Name Helper!",
+                              text = mail_txt) 
+            
+            smtp <- emayili::server(
+                host = "smtp.gmail.com",
+                port = 587,
+                username = "babynamehelper@gmail.com",
+                password = mail_pw
+            )
+            smtp(email, verbose = TRUE)
+        }
         
     })
     
