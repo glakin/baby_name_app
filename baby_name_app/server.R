@@ -5,6 +5,7 @@ library(mongolite)
 library(dplyr)
 library(emayili)
 
+
 # Read the name data
 df <- read.csv("name_data.csv")
 
@@ -66,6 +67,22 @@ shinyServer(function(input, output) {
         animation = TRUE
     )
     
+    observe(({
+        
+        values$maxRank <- length(df[df$gender == input$gender,]$name)
+        
+        output$rankSlider <- renderUI({
+            sliderInput(
+                "rankRange", 
+                "What Rankings do You Want to See?",
+                min = 1, 
+                max = values$maxRank,
+                value = c(1,values$maxRank)
+                #value = 1
+                )
+        })
+    }))
+    
     # Event: Clicking the "Suggest a Name" button
     observeEvent(input$suggest, {
         
@@ -90,9 +107,21 @@ shinyServer(function(input, output) {
         
         # Check if the repeat names option is toggled and limit the data accordingly
         if (input$rpt == "yes") {
-            df_gender <- df[df$gender == input$gender,]
+            # df_gender <- df[df$gender == input$gender  &
+            #                 df$rank >= input$rankSlider #&
+            #                 #df$rank <= input$rankSlider[2]
+            #                 ,]
+            
+            df_gender <- df %>%
+                filter(gender == input$gender) %>%
+                filter(rank >= as.numeric(input$rankSlider[1]), na.rm = TRUE) %>%
+                filter(rank <= as.numeric(input$rankSlider[2]), na.rm = TRUE)
         } else {
-            df_gender <- df[df$gender == input$gender & !(df$name %in% obs$observed[, "name"]),]
+            df_gender <- df[df$gender == input$gender & 
+                            !(df$name %in% obs$observed[, "name"]) &
+                            df$rank >= input$rankSlider #&
+                            #df$rank <= input$rankSlider[2]
+                            ,]
         }
         
         # Generate the suggested name and associated stats

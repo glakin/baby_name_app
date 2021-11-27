@@ -3,29 +3,6 @@ library(shiny)
 library(bslib)
 library(shinyalert)
 
-# shinyUI(fluidPage(
-# 
-#     titlePanel("Baby Name Suggestion App"),
-# 
-#     sidebarLayout(
-#         sidebarPanel(
-#             checkboxGroupInput("gender",
-#                         h3("Gender"),
-#                         choices = list("Female" = "F",
-#                                        "Male" = "M")),
-#             actionButton("suggest", "Suggest a Name!"),
-#             actionButton("save", "Save this Name")
-#             
-#         ),
-# 
-#         mainPanel(
-#             align="center",
-#             h1(textOutput("nameSuggestion")),
-#             textOutput("nameRank")
-#         )
-#     )
-# ))
-
 shinyUI(fluidPage(
     
     useShinyalert(),
@@ -40,17 +17,21 @@ shinyUI(fluidPage(
     
     fluidRow(
         
-        column(3, h4("Gender", align = "right")),
-        column(3, 
-                radioButtons("gender", "",
+        #column(3, h4("Gender", align = "right")),
+        column(2, offset = 2, align = "right",
+                radioButtons("gender", "Gender",
                              choices = list("Female" = "F",
                                             "Male" = "M"))
                ),
-        column(3, h4("Repeat Names?", align = "right")),
-        column(3,
-               radioButtons("rpt", "",
+        #column(3, h4("Repeat Names?", align = "right")),
+        column(2, align = "center",
+               radioButtons("rpt", "Repeat Names?",
                             choices = list("Yes" = "yes",
-                                           "No" = "no")))
+                                           "No" = "no"))
+               ),
+        column(4, align = "left",
+               uiOutput("rankSlider")
+               )
 
     ),
     
@@ -71,9 +52,7 @@ shinyUI(fluidPage(
         h1(textOutput("nameSuggestion"), align = "center"),
         h6(textOutput("nameRank"), align = "center"),
         h6(htmlOutput("observedNames"), align = "center")
-        
-        
-        #h6(textOutput("observedPct"), align = "center")
+
     ),
     
     fluidRow(
@@ -87,19 +66,13 @@ shinyUI(fluidPage(
     
     fluidRow(
         column(4, offset = 4, align = "center",
-               actionButton("email", "Email Me My Saved Names"))
+               actionButton("email", "Send Me My Saved Names"))
     ),
     
     hr(),
     
     h6("Made by Jerry Lakin, GerardLakin@gmail.com", align = "right")
     
-    # br(), 
-    # 
-    # fluidRow(
-    #     column(4, offset=4, align = "center",
-    #            actionButton("email", "Email Me My Saved Names!"))
-    # )
 
     
 ))
